@@ -86,7 +86,7 @@ static NSInteger flag;
         
         // 弹出 WZYCamera
         WZYCameraViewController *cameraVC = [[WZYCameraViewController alloc] init];
-        cameraVC.isAllowedVertical = YES; // 允许竖屏
+        cameraVC.isAllowedVertical = NO; // 是否允许竖屏
         cameraVC.delegate = self;
         [self presentViewController:cameraVC animated:YES completion:nil];
         

@@ -243,23 +243,43 @@
 - (void)takePhoto {
     
     AVCaptureConnection *stillImageConnection = [self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
+    
+    if (!stillImageConnection)
+    {
+        NSLog(@"拍照失败");
+        //        [SVProgressHUD showErrorWithStatus:@"请重新进行拍摄！"];
+        return;
+    }
+    
     UIDeviceOrientation curDeviceOrientation = [[UIDevice currentDevice] orientation];
     AVCaptureVideoOrientation avcaptureOrientation = [self avOrientationForDeviceOrientation:curDeviceOrientation];
     [stillImageConnection setVideoOrientation:avcaptureOrientation];
     [stillImageConnection setVideoScaleAndCropFactor:1];
     
+    __weak typeof(self) weakSelf = self;
     [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:stillImageConnection completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
+        
+        if (imageDataSampleBuffer == NULL) {
+            NSLog(@"拍照失败");
+            //            [SVProgressHUD showErrorWithStatus:@"请重新进行拍摄！"];
+            return;
+        }
+        
+        if (error) {
+            NSLog(@"拍照失败");
+            return;
+        }
         
         NSData *jpegData = [AVCaptureStillImageOutput jpegStillImageNSDataRepresentation:imageDataSampleBuffer];
         UIImage *tempImage = [UIImage imageWithData:jpegData scale:1.0];
         UIImage *image = [UIImage imageWithCGImage:tempImage.CGImage scale:1.0 orientation:UIImageOrientationUp];
         
         // 将拍照所得照片返回
-        if ([self.delegate respondsToSelector:@selector(cameraViewController:didFinishPickingImage:)]) {
-            [self.delegate cameraViewController:self didFinishPickingImage:image];
+        if ([weakSelf.delegate respondsToSelector:@selector(cameraViewController:didFinishPickingImage:)]) {
+            [weakSelf.delegate cameraViewController:self didFinishPickingImage:image];
             
             NSLog(@"拍照完成!");
-            [self dismissViewControllerAnimated:YES completion:nil];
+            [weakSelf dismissViewControllerAnimated:YES completion:nil];
         }
     }];
     
@@ -343,20 +363,16 @@
             [self.motionManger startDeviceMotionUpdatesToQueue:[NSOperationQueue mainQueue] withHandler:^(CMDeviceMotion * _Nullable motion, NSError * _Nullable error) {
                 
                 // 01 Gravity 获取手机的重力值在各个方向上的分量，根据这个就可以获得手机的空间位置，倾斜角度等
-                double gravityX = motion.gravity.x;
+//                double gravityX = motion.gravity.x;
                 double gravityY = motion.gravity.y;
-                double gravityZ = motion.gravity.z;
+//                double gravityZ = motion.gravity.z;
                 
                 // 02 获取手机的倾斜角度(zTheta是手机与水平面的夹角， xyTheta是手机绕自身旋转的角度)：
-                double zTheta = atan2 (gravityZ, sqrtf(gravityX * gravityX + gravityY * gravityY)) / M_PI * 180.0;
-                double xyTheta = atan2 (gravityX, gravityY) / M_PI * 180.0;
+//                double zTheta = atan2 (gravityZ, sqrtf(gravityX * gravityX + gravityY * gravityY)) / M_PI * 180.0;
+//                double xyTheta = atan2 (gravityX, gravityY) / M_PI * 180.0;
                 
-                //                if ((zTheta < 30 && zTheta > -30) && (xyTheta > 75 && xyTheta < 105)) {
-                if (xyTheta > 75 && xyTheta < 105) {
-                    _alertLabel.hidden = YES;
-                    _coverView.hidden = YES;
-                    _btn_takePhoto.enabled = YES;
-                } else if (xyTheta > -105 && xyTheta < -75) {
+                // 用 y 值来决定横竖屏拍摄比角度决定横竖屏拍摄更加的精确
+                if (gravityY <= 0.25 && gravityY >= - 0.25) {
                     _alertLabel.hidden = YES;
                     _coverView.hidden = YES;
                     _btn_takePhoto.enabled = YES;
@@ -365,7 +381,7 @@
                     _coverView.hidden = NO;
                     _btn_takePhoto.enabled = NO;
                 }
-                NSLog(@"zTheta=%f xyTheta=%f", zTheta, xyTheta);
+                
             }];
         }
         
